@@ -1,7 +1,7 @@
 #bouldererrr_ballroom
 #Created by The Boulderer
 #requires pip3 and youtube-dl installed
-#ffmpeg is in neighboring folder
+#ffmpeg should be placed in a neighboring folder
 import time
 import asyncio
 import random
@@ -340,6 +340,9 @@ async def shuffle(ctx):
         await ctx.send("Music que shuffled")
         
         
+        
+        
+#informational commands
 @bot.command(name='nowplaying', help='Names the currently playing song')
 async def nowplaying(ctx):
     async with ctx.typing():
