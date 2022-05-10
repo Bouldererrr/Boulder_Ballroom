@@ -342,7 +342,7 @@ async def shuffle(ctx):
         
         
         
-#informational
+#informational commands
 @bot.command(name='nowplaying', help='Names the currently playing song')
 async def nowplaying(ctx):
     async with ctx.typing():
