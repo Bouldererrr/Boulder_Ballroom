@@ -1,13 +1,19 @@
 #bouldererrr_ballroom
 #Created by The Boulderer
-#requires pip3 and youtube-dl installed
-#ffmpeg should be placed in a neighboring folder
+#requires pip3, dotenv, youtube-dl, and discord installed on system
+#sudo apt update
+#pip3: sudo apt install python3-pip
+#dotenv: pip install python-dotenv
+#youtube-dl: sudo apt-get install youtube-dl
+#discord: python3 -m pip install -U discord.py
+#use this command to help with 403 errors: youtube-dl --rm-cache-dir
+#ffmpeg should be placed in a adjacent folder
 import time
 import asyncio
 import random
+import os
 import discord
 from discord.ext import commands,tasks
-import os
 from dotenv import load_dotenv
 import youtube_dl
 
@@ -21,7 +27,6 @@ client = discord.Client(intents=intents)
 bot = commands.Bot(command_prefix='$',intents=intents)
 
 
-
 youtube_dl.utils.bug_reports_message = lambda: ''
 
 ytdl_format_options = {
@@ -29,7 +34,7 @@ ytdl_format_options = {
     'restrictfilenames': True,
     'noplaylist': True,
     'nocheckcertificate': True,
-    'ignoreerrors': False,
+    'ignoreerrors': True,
     'logtostderr': False,
     'quiet': True,
     'no_warnings': True,
@@ -349,8 +354,8 @@ async def nowplaying(ctx):
         g = findGuild(ctx.guild.id)
         await ctx.send(parseSongName(g.getSong(0)))
 
-@bot.command(name='showsongs', help='Lists the names of the next 10 songs in que')
-async def showSongs(ctx):
+@bot.command(name='upnext', help='Lists the names of the next 10 songs in que')
+async def upnext(ctx):
     async with ctx.typing():
         g = findGuild(ctx.guild.id)
         songs = ""
