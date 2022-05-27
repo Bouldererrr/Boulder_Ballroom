@@ -62,14 +62,7 @@ def removeGuild(ctxid):
         if ctxid == obj.guildid:
             guildlist.pop(guildlist.index(obj))
             
-def checkGuild(ctxid):
-    for g in guildlist:
-        if g.guildid == ctxid:
-            return True
-        else:
-            return False
-            
-def findGuild(ctxid):
+def getGuild(ctxid):
     for g in guildlist:
         if g.guildid == ctxid:
             return g
@@ -88,6 +81,7 @@ class guildSongQue():
     def __init__(self, guildid):
         self.guildid = guildid
         self.songlist = []
+        self.shuffle = False
         
         
     def addSong(self, filename):
@@ -197,10 +191,14 @@ async def leave(ctx):
 
 #Commands to manipulate sound track
 @bot.command(name='play', help='plays a song from YouTube via url or search by name. \n'
-            'Use quotations to search multiple words. Add shuffle to shuffle before playing \n'
-            'example: $play "Song Name" \n'
-            '$play playlist-url shuffle')
-async def play(ctx, url, shuffle=None):
+            'Will play from url or search by name \n'
+            'example: $play song name \n'
+            '$play playlist-url')
+async def play(ctx, *argv):
+
+    url = ""
+    for item in argv:
+        url += item
 
     #if not connected to a voice channel connect first
     if ctx.message.guild.voice_client == None:
@@ -213,10 +211,12 @@ async def play(ctx, url, shuffle=None):
     #send url to YTDL to download and return a list of filesnames to be put into song que
     async with ctx.typing():
         filenames = await YTDLSource.from_url(url, loop=bot.loop)
-        if shuffle == "shuffle":
+        
+        g = getGuild(ctx.guild.id)
+
+        if g.shuffle == True:
+            g.shuffle = False
             random.shuffle(filenames)
-            
-        g = findGuild(ctx.guild.id)
         
         for song in filenames:
             g.addSong(song)
@@ -233,9 +233,18 @@ async def play(ctx, url, shuffle=None):
             while(len(g.songlist) > 0):
                 if(await g.playSong(ctx)):
                     pass
-                       
+                           
     except:
         await ctx.send("could not play song")
+
+@bot.command(name='playshuffled', help="plays songs and shuffles playlists on queing")
+async def playShuffled(ctx, *argv):
+    if ctx.message.guild.voice_client == None:
+        await join(ctx)    
+
+    g = getGuild(ctx.guild.id)
+    g.shuffle = True
+    await play(ctx, *argv)
 
 
 @bot.command(name='pause', help='Pauses the music player')
@@ -265,7 +274,7 @@ async def stop(ctx):
     try:
         voice_client = ctx.message.guild.voice_client
         if voice_client.is_playing() or voice_client.is_paused():
-            g = findGuild(ctx.guild.id)
+            g = getGuild(ctx.guild.id)
             g.clearSongs()
             voice_client.stop()
         else:
@@ -276,15 +285,19 @@ async def stop(ctx):
 
 
 #que manipulation
-@bot.command(name='add', help='Adds a song to the que. Works like play command')
-async def add(ctx, url, shuffle=None):
-    await play(ctx, url, shuffle)
+@bot.command(name='add', help='functions as play command')
+async def add(ctx, *argv):
+    await play(ctx, *argv)
+
+@bot.command(name='addshuffled', help='functions as playshuffled command')
+async def addShuffled(ctx, *argv):
+    await playShuffled(ctx, *argv)
         
 
 @bot.command(name='clear', help='Clears the song que')
 async def clear(ctx):
     try:
-        g = findGuild(ctx.guild.id)
+        g = getGuild(ctx.guild.id)
         tmp = g.getSong(0)
         g.clearSongs()
         g.addSong(tmp)
@@ -324,7 +337,7 @@ async def playNext(ctx, url, shuffle=None):
             
             if shuffle == "shuffle":
                 random.shuffle(filenames)
-            g = findGuild(ctx.guild.id)
+            g = getGuild(ctx.guild.id)
             
             c = 1
             for song in filenames:
@@ -337,7 +350,7 @@ async def playNext(ctx, url, shuffle=None):
 @bot.command(name='shuffle', help='Shuffles all songs in song que')
 async def shuffle(ctx):
     async with ctx.typing():
-        g = findGuild(ctx.guild.id)
+        g = getGuild(ctx.guild.id)
         tmp = g.getSong(0)
         g.popSong(0)
         random.shuffle(g.songlist)
@@ -351,13 +364,13 @@ async def shuffle(ctx):
 @bot.command(name='nowplaying', help='Names the currently playing song')
 async def nowplaying(ctx):
     async with ctx.typing():
-        g = findGuild(ctx.guild.id)
+        g = getGuild(ctx.guild.id)
         await ctx.send(parseSongName(g.getSong(0)))
 
 @bot.command(name='upnext', help='Lists the names of the next 10 songs in que')
 async def upnext(ctx):
     async with ctx.typing():
-        g = findGuild(ctx.guild.id)
+        g = getGuild(ctx.guild.id)
         songs = ""
         c = 0
         for song in g.songlist:
