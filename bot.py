@@ -198,7 +198,7 @@ async def play(ctx, *argv):
 
     url = ""
     for item in argv:
-        url += item
+        url += item + " "
 
     #if not connected to a voice channel connect first
     if ctx.message.guild.voice_client == None:
