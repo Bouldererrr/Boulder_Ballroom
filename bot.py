@@ -1,5 +1,5 @@
-#bouldererrr_ballroom
-#Created by The Boulderer
+#Bouldererrr_Ballroom
+#Created by TheBoulderer
 #requires pip3, dotenv, youtube-dl, and discord installed on system
 #sudo apt update
 #pip3: sudo apt install python3-pip
@@ -22,11 +22,13 @@ load_dotenv()
 # Get Discord API token from the .env file.
 DISCORD_TOKEN = os.getenv("discord_token")
 
+#discord connection setup
 intents = discord.Intents().all()
 client = discord.Client(intents=intents)
 bot = commands.Bot(command_prefix='$',intents=intents)
 
 
+#youtube_dl setup
 youtube_dl.utils.bug_reports_message = lambda: ''
 
 ytdl_format_options = {
@@ -43,10 +45,12 @@ ytdl_format_options = {
     'outtmpl': 'playedsongs/%(title)s_%(id)s.%(ext)s'
 }
 
+#ffmpeg setup
 ffmpeg_options = {
     'options': '-vn'
 }
 
+#global variables
 ytdl = youtube_dl.YoutubeDL(ytdl_format_options)
 #holds a list of active guildSongQue classes
 guildlist = []
@@ -69,9 +73,9 @@ def getGuild(ctxid):
 
 #used to make saved song names more legible
 def parseSongName(name):
-    lastunder = name.rfind('_')
-    firstsla = name.find('/')
-    name = name[firstsla+1:lastunder]
+    lastunderscore = name.rfind('_')
+    firstslash = name.find('/')
+    name = name[firstslash+1:lastunderscore]
     name = name.replace('_',' ')
     return name
 
@@ -82,7 +86,6 @@ class guildSongQue():
         self.guildid = guildid
         self.songlist = []
         self.shuffle = False
-        
         
     def addSong(self, filename):
         self.songlist.append(filename)
@@ -146,7 +149,6 @@ class YTDLSource(discord.PCMVolumeTransformer):
             filename.append(data['title'] if stream else ytdl.prepare_filename(data))
             return filename
         
-
 
 
 
@@ -318,7 +320,6 @@ async def skip(ctx):
     	await ctx.send("Could not skip")
         
         
-        
 @bot.command(name='playnext', help='Adds song(s) to play next in que')
 async def playNext(ctx, url, shuffle=None):
 
@@ -344,7 +345,6 @@ async def playNext(ctx, url, shuffle=None):
                 g.insertSong(c, song)
                 c = c + 1
             await ctx.send("Playing song(s) next")
-    
     
     
 @bot.command(name='shuffle', help='Shuffles all songs in song que')
