@@ -1,13 +1,7 @@
 #Bouldererrr_Ballroom
 #Created by TheBoulderer
-#requires pip3, dotenv, youtube-dl, and discord installed on system
-#sudo apt update
-#pip3: sudo apt install python3-pip
-#dotenv: pip install python-dotenv
-#youtube-dl: sudo apt-get install youtube-dl
-#discord: python3 -m pip install -U discord.py
-#use this command to help with 403 errors: youtube-dl --rm-cache-dir
-#ffmpeg should be placed in a adjacent folder
+
+
 import time
 import asyncio
 import random
@@ -382,4 +376,7 @@ async def upnext(ctx):
 
 
 if __name__ == "__main__" :
+    #logging.basicConfig(filename='bot.log', filemode='w', level=logging.DEBUG)
+    #logging.info('Started')
     bot.run(DISCORD_TOKEN)
+    #logging.info('Finished')
