@@ -20,7 +20,7 @@ DISCORD_TOKEN = os.getenv("discord_token")
 intents = discord.Intents().all()
 client = discord.Client(intents=intents)
 #prefix can be any character but would recomend an uncommon symbol and one not used by other bots
-bot = commands.Bot(command_prefix='%',intents=intents)
+bot = commands.Bot(command_prefix='$',intents=intents)
 
 
 #youtube_dl setup
