@@ -1,7 +1,7 @@
 #Bouldererrr_Ballroom
 #Created by TheBoulderer
 
-
+import logging
 import time
 import asyncio
 import random
@@ -19,7 +19,8 @@ DISCORD_TOKEN = os.getenv("discord_token")
 #discord connection setup
 intents = discord.Intents().all()
 client = discord.Client(intents=intents)
-bot = commands.Bot(command_prefix='$',intents=intents)
+#prefix can be any character but would recomend an uncommon symbol and one not used by other bots
+bot = commands.Bot(command_prefix='%',intents=intents)
 
 
 #youtube_dl setup
@@ -28,6 +29,7 @@ youtube_dl.utils.bug_reports_message = lambda: ''
 ytdl_format_options = {
     'format': 'bestaudio/best',
     'restrictfilenames': True,
+    'no-overwrites': True,
     'noplaylist': True,
     'nocheckcertificate': True,
     'ignoreerrors': True,
@@ -51,7 +53,7 @@ guildlist = []
 
 
 
-#add and remove sonQue class from guildlist array
+#add and remove guildSongQue class from guildlist array
 def addGuild(x):
     guildlist.append(x)
     
@@ -65,7 +67,7 @@ def getGuild(ctxid):
         if g.guildid == ctxid:
             return g
 
-#used to make saved song names more legible
+#Parse saved songs names to remove youtubeid and be more legible
 def parseSongName(name):
     lastunderscore = name.rfind('_')
     firstslash = name.find('/')
@@ -74,7 +76,7 @@ def parseSongName(name):
     return name
 
 
-#class manages songs for independent servers checks contextid against stored id to identify which class instance to use
+#class manages songs for independent servers checks guildid to identify which class instance to use
 class guildSongQue():
     def __init__(self, guildid):
         self.guildid = guildid
@@ -101,8 +103,9 @@ class guildSongQue():
     def getSong(self, pos):
         try:
     	    return self.songlist[pos]
-        except:
-    	    print("no songs in that position")
+        except Exception as Argument:
+            logging.exception("An Error occured in getSong function")
+            print("no songs in that position")
 
     #Plays a song in context server
     async def playSong(self, ctx):
@@ -155,6 +158,9 @@ async def join(ctx):
         if not ctx.message.author.voice:
             await ctx.send("{} is not connected to a voice channel".format(ctx.message.author.name))
             return
+
+        #possible logic error. can't remember if the bot can change channels within a server and continue to play a song
+        #should check if playing, not if connected
         elif voice_client !=None:
             await ctx.send("Bot is already connected to a voice channel")
         
@@ -162,7 +168,8 @@ async def join(ctx):
             channel = ctx.message.author.voice.channel
             await channel.connect()
             addGuild(guildSongQue(ctx.guild.id))
-    except:
+    except Exception as Argument:
+        logging.exception("An Error occured in join function")
         await ctx.send("could not join")
 
 @bot.command(name='leave', help='Bot will leave the voice channel')
@@ -177,7 +184,8 @@ async def leave(ctx):
 
         else:
             await ctx.send("The bot is not connected to a voice channel.")
-    except:
+    except Exception as Argument:
+        logging.exception("An Error occured in leave function")
         await ctx.send("could not leave")
 
 
@@ -204,7 +212,7 @@ async def play(ctx, *argv):
     voice_client = ctx.message.guild.voice_client
     voice_channel = server.voice_client
         
-    #send url to YTDL to download and return a list of filesnames to be put into song que
+    #send url to YTDL to download and return a list of filesnames to be put into song queue
     async with ctx.typing():
         filenames = await YTDLSource.from_url(url, loop=bot.loop)
         
@@ -221,7 +229,7 @@ async def play(ctx, *argv):
         if voice_client.is_playing() or voice_client.is_paused():
             if voice_client.is_paused():
                 await ctx.send("music player is paused")
-            await ctx.send("Added to que")
+            await ctx.send("Added song(s) to queue")
         else:
             #voice_channel.play(discord.FFmpegPCMAudio(executable="ffmpeg-static/ffmpeg", source=g.getSong(0)))
             sendstr = '**Now playing:** ' + parseSongName(g.getSong(0))
@@ -230,14 +238,12 @@ async def play(ctx, *argv):
                 if(await g.playSong(ctx)):
                     pass
                            
-    except:
+    except Exception as Argument:
+        logging.exception("An error orrcured in play function")
         await ctx.send("could not play song")
 
 @bot.command(name='playshuffled', help="plays songs and shuffles playlists on queing")
 async def playShuffled(ctx, *argv):
-    if ctx.message.guild.voice_client == None:
-        await join(ctx)    
-
     g = getGuild(ctx.guild.id)
     g.shuffle = True
     await play(ctx, *argv)
@@ -251,7 +257,8 @@ async def pause(ctx):
             voice_client.pause()
         else:
             await ctx.send("The bot is not playing anything at the moment.")
-    except:
+    except Exception as Argument:
+        logging.exception("An Error occured in pause function")
         await ctx.send("could not pause")
     
 @bot.command(name='resume', help='Resumes player')
@@ -262,10 +269,11 @@ async def resume(ctx):
             voice_client.resume()
         else:
             await ctx.send("The bot is not playing anything. Use play command")
-    except:
+    except Exception as Argument:
+        logging.exception("An Error occured in resume function")
         await ctx.send("could not resume")
 
-@bot.command(name='stop', help='Stops the player and clears song que')
+@bot.command(name='stop', help='Stops the player and clears song queue')
 async def stop(ctx):
     try:
         voice_client = ctx.message.guild.voice_client
@@ -275,12 +283,13 @@ async def stop(ctx):
             voice_client.stop()
         else:
             await ctx.send("The bot is not playing anything at the moment.")
-    except:
+    except Exception as Argument:
+        logging.exception("An Error occured in stop function")
         await ctx.send("could not stop")
 
 
 
-#que manipulation
+#queue manipulation
 @bot.command(name='add', help='functions as play command')
 async def add(ctx, *argv):
     await play(ctx, *argv)
@@ -290,16 +299,17 @@ async def addShuffled(ctx, *argv):
     await playShuffled(ctx, *argv)
         
 
-@bot.command(name='clear', help='Clears the song que')
+@bot.command(name='clear', help='Clears the song queue')
 async def clear(ctx):
     try:
         g = getGuild(ctx.guild.id)
         tmp = g.getSong(0)
         g.clearSongs()
         g.addSong(tmp)
-        await ctx.send("Song que cleared")
-    except:
-        await ctx.send("Could not clear the que")
+        await ctx.send("Song queue cleared")
+    except Exception as Argument:
+        logging.exception("An Error occured in clear function")
+        await ctx.send("Could not clear the queue")
     	
 @bot.command(name='skip', help='Skips current song')
 async def skip(ctx):
@@ -310,12 +320,17 @@ async def skip(ctx):
             voice_client.stop()
         else:
             await ctx.send("Music player is not active")
-    except:
-    	await ctx.send("Could not skip")
+    except Exception as Argument:
+        logging.exception("An Error occured in skip function")
+        await ctx.send("Could not skip")
         
         
-@bot.command(name='playnext', help='Adds song(s) to play next in que')
-async def playNext(ctx, url, shuffle=None):
+@bot.command(name='playnext', help='Adds song(s) to play next in queue')
+async def playNext(ctx, *argv):
+
+    url = ""
+    for item in argv:
+        url += item + " "
 
     if ctx.message.guild.voice_client == None:
         await join(ctx)
@@ -323,15 +338,13 @@ async def playNext(ctx, url, shuffle=None):
     voice_client = ctx.message.guild.voice_client
     
     if voice_client.is_playing() == False and voice_client.is_paused() == False:
-        await play(ctx, url, shuffle)
+        await play(ctx, url)
         return
     
     else:  
         async with ctx.typing():  
             filenames = await YTDLSource.from_url(url, loop=bot.loop)
             
-            if shuffle == "shuffle":
-                random.shuffle(filenames)
             g = getGuild(ctx.guild.id)
             
             c = 1
@@ -341,15 +354,20 @@ async def playNext(ctx, url, shuffle=None):
             await ctx.send("Playing song(s) next")
     
     
-@bot.command(name='shuffle', help='Shuffles all songs in song que')
+@bot.command(name='shuffle', help='Shuffles all songs in song queue')
 async def shuffle(ctx):
     async with ctx.typing():
         g = getGuild(ctx.guild.id)
-        tmp = g.getSong(0)
-        g.popSong(0)
-        random.shuffle(g.songlist)
-        g.insertSong(0, tmp)
-        await ctx.send("Music que shuffled")
+        if ctx.message.guild.voice_client == None:
+            await ctx.send("Bot is not connected to voice channel")
+        elif len(g.songlist) == 0:
+            await ctx.send("There are no songs in the queue")
+        else:        
+            tmp = g.getSong(0)
+            g.popSong(0)
+            random.shuffle(g.songlist)
+            g.insertSong(0, tmp)
+            await ctx.send("Music queue shuffled")
         
         
         
@@ -359,24 +377,34 @@ async def shuffle(ctx):
 async def nowplaying(ctx):
     async with ctx.typing():
         g = getGuild(ctx.guild.id)
-        await ctx.send(parseSongName(g.getSong(0)))
+        if ctx.message.guild.voice_client == None:
+            await ctx.send("Bot is not connected to voice channel")
+        elif len(g.songlist) == 0:
+            await ctx.send("There are no songs in the queue")
+        else:
+            await ctx.send(parseSongName(g.getSong(0)))
 
-@bot.command(name='upnext', help='Lists the names of the next 10 songs in que')
+@bot.command(name='upnext', help='Lists the names of the next 10 songs in queue')
 async def upnext(ctx):
     async with ctx.typing():
         g = getGuild(ctx.guild.id)
-        songs = ""
-        c = 0
-        for song in g.songlist:
-            songs += parseSongName(song) + "\n"
-            c = c+1
-            if c > 9:
-                break
-        await ctx.send(songs)
+        if ctx.message.guild.voice_client == None:
+            await ctx.send("Bot is not connected to voice channel")
+        elif len(g.songlist) == 0:
+            await ctx.send("There are no songs in the queue")
+        else:
+            songs = ""
+            c = 0
+            for song in g.songlist:
+                songs += parseSongName(song) + "\n"
+                c = c+1
+                if c > 9:
+                    break
+            await ctx.send(songs)
 
 
 if __name__ == "__main__" :
-    #logging.basicConfig(filename='bot.log', filemode='w', level=logging.DEBUG)
-    #logging.info('Started')
+    logging.basicConfig(filename='bot.log', filemode='w', level=logging.INFO)
+    logging.info('Started')
     bot.run(DISCORD_TOKEN)
-    #logging.info('Finished')
+    logging.info('Finished')
