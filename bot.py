@@ -11,6 +11,8 @@ from discord.ext import commands,tasks
 from dotenv import load_dotenv
 import youtube_dl
 
+from GuildSongQue import *
+
 load_dotenv()
 
 # Get Discord API token from the .env file.
@@ -19,7 +21,9 @@ DISCORD_TOKEN = os.getenv("discord_token")
 #discord connection setup
 intents = discord.Intents().all()
 client = discord.Client(intents=intents)
-#prefix can be any character but would recomend an uncommon symbol and one not used by other bots
+
+#prefix can be any character but would recommend an uncommon symbol and one not used by other bots
+
 bot = commands.Bot(command_prefix='$',intents=intents)
 
 
@@ -47,25 +51,25 @@ ffmpeg_options = {
 }
 
 #global variables
+#Set youtube_dl format options
 ytdl = youtube_dl.YoutubeDL(ytdl_format_options)
-#holds a list of active guildSongQue classes
-guildlist = []
 
+#Plays a song in context server
+async def playSong(ctx):
+    gsq = getGuild(ctx.guild.id)
+    voice_client = ctx.message.guild.voice_client
+    server = ctx.message.guild
+    voice_channel = server.voice_client
 
-
-#add and remove guildSongQue class from guildlist array
-def addGuild(x):
-    guildlist.append(x)
+    if len(gsq.songlist) > 0:
+        voice_channel.play(discord.FFmpegPCMAudio(source=gsq.getSong(0)))
+        print(parseSongName(gsq.getSong(0)))
+        while (voice_client.is_playing() or voice_client.is_paused()):
+            await asyncio.sleep(1)
+        if len(gsq.songlist) > 0:
+            gsq.popSong(0)
     
-def removeGuild(ctxid):
-    for obj in guildlist:
-        if ctxid == obj.guildid:
-            guildlist.pop(guildlist.index(obj))
-            
-def getGuild(ctxid):
-    for g in guildlist:
-        if g.guildid == ctxid:
-            return g
+    return False
 
 #Parse saved songs names to remove youtubeid and be more legible
 def parseSongName(name):
@@ -76,75 +80,32 @@ def parseSongName(name):
     return name
 
 
-#class manages songs for independent servers checks guildid to identify which class instance to use
-class guildSongQue():
-    def __init__(self, guildid):
-        self.guildid = guildid
-        self.songlist = []
-        self.shuffle = False
-        
-    def addSong(self, filename):
-        self.songlist.append(filename)
-        
-    def insertSong(self, location, filename):
-        self.songlist.insert(location, filename)
-    	
-    def removeSong(self, filename):
-        self.songlist.remove(filename)
-   
-    def popSong(self, pos):
-        self.songlist.pop(pos)
-        
-    def clearSongs(self):
-        l = len(self.songlist)
-        for x in range(l):
-            self.popSong(0)
-    
-    def getSong(self, pos):
-        try:
-    	    return self.songlist[pos]
-        except Exception as Argument:
-            logging.exception("An Error occured in getSong function")
-            print("no songs in that position")
-
-    #Plays a song in context server
-    async def playSong(self, ctx):
-        voice_client = ctx.message.guild.voice_client
-        server = ctx.message.guild
-        voice_channel = server.voice_client
-
-        if len(self.songlist) > 0:
-            voice_channel.play(discord.FFmpegPCMAudio(executable="ffmpeg-static/ffmpeg", source=self.getSong(0)))
-            print(parseSongName(self.getSong(0)))
-            while (voice_client.is_playing() or voice_client.is_paused()):
-                await asyncio.sleep(1)
-            if len(self.songlist) > 0:
-                self.popSong(0)
-        
-        return False
-        
-    
+            
     
 #youtubl class to download youtube audio file from links or search and return an array of filenames
 class YTDLSource(discord.PCMVolumeTransformer):
-    def __init__(self, source, *, data, volume=0.5):
-        super().__init__(source, volume)
-        self.data = data
-        self.title = data.get('title')
-        self.url = ""
+    try:
+        def __init__(self, source, *, data, volume=0.5):
+            super().__init__(source, volume)
+            self.data = data
+            self.title = data.get('title')
+            self.url = ""
 
-    @classmethod
-    async def from_url(cls, url, *, loop=None, stream=False):
-        loop = loop or asyncio.get_event_loop()
-        data = await loop.run_in_executor(None, lambda: ytdl.extract_info(url, download=not stream))
-        filename = []
-        if 'entries' in data:
-            for x in data['entries']:
-            	filename.append(x['title'] if stream else ytdl.prepare_filename(x))
-            return filename
-        else:
-            filename.append(data['title'] if stream else ytdl.prepare_filename(data))
-            return filename
+        @classmethod
+        async def from_url(cls, url, *, loop=None, stream=False):
+            loop = loop or asyncio.get_event_loop()
+            data = await loop.run_in_executor(None, lambda: ytdl.extract_info(url, download=not stream))
+
+            filename = []
+            if 'entries' in data:
+                for x in data['entries']:
+                	filename.append(x['title'] if stream else ytdl.prepare_filename(x))
+                return filename
+            else:
+                filename.append(data['title'] if stream else ytdl.prepare_filename(data))
+                return filename
+    except Exception as Argument:
+        logging.exception("An error occured in YTDLSource function")
         
 
 
@@ -159,15 +120,14 @@ async def join(ctx):
             await ctx.send("{} is not connected to a voice channel".format(ctx.message.author.name))
             return
 
-        #possible logic error. can't remember if the bot can change channels within a server and continue to play a song
-        #should check if playing, not if connected
+
         elif voice_client !=None:
             await ctx.send("Bot is already connected to a voice channel")
         
         else:
             channel = ctx.message.author.voice.channel
             await channel.connect()
-            addGuild(guildSongQue(ctx.guild.id))
+            addGuild(GuildSongQue(ctx.guild.id))
     except Exception as Argument:
         logging.exception("An Error occured in join function")
         await ctx.send("could not join")
@@ -200,32 +160,33 @@ async def leave(ctx):
             '$play playlist-url')
 async def play(ctx, *argv):
 
-    url = ""
-    for item in argv:
-        url += item + " "
-
-    #if not connected to a voice channel connect first
-    if ctx.message.guild.voice_client == None:
-        await join(ctx)
-    
-    server = ctx.message.guild
-    voice_client = ctx.message.guild.voice_client
-    voice_channel = server.voice_client
-        
-    #send url to YTDL to download and return a list of filesnames to be put into song queue
-    async with ctx.typing():
-        filenames = await YTDLSource.from_url(url, loop=bot.loop)
-        
-        g = getGuild(ctx.guild.id)
-
-        if g.shuffle == True:
-            g.shuffle = False
-            random.shuffle(filenames)
-        
-        for song in filenames:
-            g.addSong(song)
-            
     try:
+        url = ""
+        for item in argv:
+            url += item + " "
+
+        #if not connected to a voice channel connect first
+        if ctx.message.guild.voice_client == None:
+            await join(ctx)
+        
+        server = ctx.message.guild
+        voice_client = ctx.message.guild.voice_client
+        voice_channel = server.voice_client
+            
+        #send url to YTDL to download and return a list of filesnames to be put into song queue
+        async with ctx.typing():
+            filenames = await YTDLSource.from_url(url, loop=bot.loop)
+            
+            g = getGuild(ctx.guild.id)
+
+            if g.shuffle == True:
+                g.shuffle = False
+                random.shuffle(filenames)
+            
+            for song in filenames:
+                g.addSong(song)
+            
+    
         if voice_client.is_playing() or voice_client.is_paused():
             if voice_client.is_paused():
                 await ctx.send("music player is paused")
@@ -235,7 +196,7 @@ async def play(ctx, *argv):
             sendstr = '**Now playing:** ' + parseSongName(g.getSong(0))
             await ctx.send(sendstr)
             while(len(g.songlist) > 0):
-                if(await g.playSong(ctx)):
+                if(await playSong(ctx)):
                     pass
                            
     except Exception as Argument:
