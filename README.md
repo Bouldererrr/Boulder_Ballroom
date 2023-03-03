@@ -9,6 +9,7 @@ pip3: sudo apt install python3-pip
 dotenv: pip install python-dotenv
 youtube-dl: sudo apt-get install youtube-dl
 discord: python3 -m pip install -U discord.py
+
 ffmpeg: sudo apt install ffmpeg
 
 Add the discord bot token to the .env file to connect

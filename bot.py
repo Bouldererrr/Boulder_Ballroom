@@ -21,7 +21,9 @@ DISCORD_TOKEN = os.getenv("discord_token")
 #discord connection setup
 intents = discord.Intents().all()
 client = discord.Client(intents=intents)
+
 #prefix can be any character but would recommend an uncommon symbol and one not used by other bots
+
 bot = commands.Bot(command_prefix='$',intents=intents)
 
 
