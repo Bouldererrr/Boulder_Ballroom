@@ -21,10 +21,8 @@ DISCORD_TOKEN = os.getenv("discord_token")
 #discord connection setup
 intents = discord.Intents().all()
 client = discord.Client(intents=intents)
-
 #prefix can be any character but would recommend an uncommon symbol and one not used by other bots
-
-bot = commands.Bot(command_prefix='$',intents=intents)
+bot = commands.Bot(command_prefix='%',intents=intents)
 
 
 #youtube_dl setup
@@ -32,6 +30,7 @@ youtube_dl.utils.bug_reports_message = lambda: ''
 
 ytdl_format_options = {
     'format': 'bestaudio/best',
+    'fragment_retries': 1,
     'restrictfilenames': True,
     'no-overwrites': True,
     'noplaylist': True,
@@ -52,7 +51,34 @@ ffmpeg_options = {
 
 #global variables
 #Set youtube_dl format options
-ytdl = youtube_dl.YoutubeDL(ytdl_format_options)
+ytdl = youtube_dl.YoutubeDL(ytdl_format_options)  
+    
+#youtubl class to download youtube audio file from links or search and return an array of filenames
+class YTDLSource(discord.PCMVolumeTransformer):
+    try:
+        def __init__(self, source, *, data, volume=0.5):
+            super().__init__(source, volume)
+            self.data = data
+            self.title = data.get('title')
+            self.url = ""
+
+        @classmethod
+        async def from_url(cls, url, *, loop=None, stream=False):
+            loop = loop or asyncio.get_event_loop()
+            data = await loop.run_in_executor(None, lambda: ytdl.extract_info(url, download=not stream))
+
+            
+            filename = []
+            if 'entries' in data:
+                for x in data['entries']:
+                	filename.append(x['title'] if stream else ytdl.prepare_filename(x))
+                return filename
+            else:
+                filename.append(data['title'] if stream else ytdl.prepare_filename(data))
+                return filename
+    except Exception as Argument:
+        logging.exception("An error occured in YTDLSource function")
+        
 
 #Plays a song in context server
 async def playSong(ctx):
@@ -71,6 +97,7 @@ async def playSong(ctx):
     
     return False
 
+
 #Parse saved songs names to remove youtubeid and be more legible
 def parseSongName(name):
     lastunderscore = name.rfind('_')
@@ -78,37 +105,8 @@ def parseSongName(name):
     name = name[firstslash+1:lastunderscore]
     name = name.replace('_',' ')
     return name
-
-
-            
     
-#youtubl class to download youtube audio file from links or search and return an array of filenames
-class YTDLSource(discord.PCMVolumeTransformer):
-    try:
-        def __init__(self, source, *, data, volume=0.5):
-            super().__init__(source, volume)
-            self.data = data
-            self.title = data.get('title')
-            self.url = ""
-
-        @classmethod
-        async def from_url(cls, url, *, loop=None, stream=False):
-            loop = loop or asyncio.get_event_loop()
-            data = await loop.run_in_executor(None, lambda: ytdl.extract_info(url, download=not stream))
-
-            filename = []
-            if 'entries' in data:
-                for x in data['entries']:
-                	filename.append(x['title'] if stream else ytdl.prepare_filename(x))
-                return filename
-            else:
-                filename.append(data['title'] if stream else ytdl.prepare_filename(data))
-                return filename
-    except Exception as Argument:
-        logging.exception("An error occured in YTDLSource function")
-        
-
-
+    
 
 
 #have the bot join or leave the channel
@@ -128,9 +126,12 @@ async def join(ctx):
             channel = ctx.message.author.voice.channel
             await channel.connect()
             addGuild(GuildSongQue(ctx.guild.id))
+            
     except Exception as Argument:
         logging.exception("An Error occured in join function")
         await ctx.send("could not join")
+
+
 
 @bot.command(name='leave', help='Bot will leave the voice channel')
 async def leave(ctx):
@@ -178,7 +179,7 @@ async def play(ctx, *argv):
             filenames = await YTDLSource.from_url(url, loop=bot.loop)
             
             g = getGuild(ctx.guild.id)
-
+            
             if g.shuffle == True:
                 g.shuffle = False
                 random.shuffle(filenames)
@@ -192,7 +193,6 @@ async def play(ctx, *argv):
                 await ctx.send("music player is paused")
             await ctx.send("Added song(s) to queue")
         else:
-            #voice_channel.play(discord.FFmpegPCMAudio(executable="ffmpeg-static/ffmpeg", source=g.getSong(0)))
             sendstr = '**Now playing:** ' + parseSongName(g.getSong(0))
             await ctx.send(sendstr)
             while(len(g.songlist) > 0):
