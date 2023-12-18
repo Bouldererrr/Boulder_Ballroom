@@ -1,4 +1,4 @@
-#holds a list of active GuildSongQue classes
+#Holds a list of active GuildSongQue classes
 guildlist = []
 
 

@@ -9,9 +9,11 @@ import os
 import discord
 from discord.ext import commands,tasks
 from dotenv import load_dotenv
-import youtube_dl
+
 
 from GuildSongQue import *
+from YTDLSource import *
+
 
 load_dotenv()
 
@@ -25,60 +27,13 @@ client = discord.Client(intents=intents)
 bot = commands.Bot(command_prefix='%',intents=intents)
 
 
-#youtube_dl setup
-youtube_dl.utils.bug_reports_message = lambda: ''
-
-ytdl_format_options = {
-    'format': 'bestaudio/best',
-    'fragment_retries': 1,
-    'restrictfilenames': True,
-    'no-overwrites': True,
-    'noplaylist': True,
-    'nocheckcertificate': True,
-    'ignoreerrors': True,
-    'logtostderr': False,
-    'quiet': True,
-    'no_warnings': True,
-    'default_search': 'auto',
-    'source_address': '0.0.0.0', # bind to ipv4 since ipv6 addresses cause issues sometimes
-    'outtmpl': 'playedsongs/%(title)s_%(id)s.%(ext)s'
-}
-
 #ffmpeg setup
 ffmpeg_options = {
     'options': '-vn'
 }
 
 #global variables
-#Set youtube_dl format options
-ytdl = youtube_dl.YoutubeDL(ytdl_format_options)  
-    
-#youtubl class to download youtube audio file from links or search and return an array of filenames
-class YTDLSource(discord.PCMVolumeTransformer):
-    try:
-        def __init__(self, source, *, data, volume=0.5):
-            super().__init__(source, volume)
-            self.data = data
-            self.title = data.get('title')
-            self.url = ""
 
-        @classmethod
-        async def from_url(cls, url, *, loop=None, stream=False):
-            loop = loop or asyncio.get_event_loop()
-            data = await loop.run_in_executor(None, lambda: ytdl.extract_info(url, download=not stream))
-
-            
-            filename = []
-            if 'entries' in data:
-                for x in data['entries']:
-                	filename.append(x['title'] if stream else ytdl.prepare_filename(x))
-                return filename
-            else:
-                filename.append(data['title'] if stream else ytdl.prepare_filename(data))
-                return filename
-    except Exception as Argument:
-        logging.exception("An error occured in YTDLSource function")
-        
 
 #Plays a song in context server
 async def playSong(ctx):
@@ -119,7 +74,7 @@ async def join(ctx):
             return
 
 
-        elif voice_client !=None:
+        elif voice_client != None:
             await ctx.send("Bot is already connected to a voice channel")
         
         else:
@@ -147,7 +102,7 @@ async def leave(ctx):
             await ctx.send("The bot is not connected to a voice channel.")
     except Exception as Argument:
         logging.exception("An Error occured in leave function")
-        await ctx.send("could not leave")
+        await ctx.send("Could not leave")
 
 
 
@@ -155,9 +110,9 @@ async def leave(ctx):
 
 
 #Commands to manipulate sound track
-@bot.command(name='play', help='plays a song from YouTube via url or search by name. \n'
+@bot.command(name='play', help='Plays a song from YouTube via url or searches by name. \n'
             'Will play from url or search by name \n'
-            'example: $play song name \n'
+            'Example: $play song name \n'
             '$play playlist-url')
 async def play(ctx, *argv):
 
@@ -203,7 +158,7 @@ async def play(ctx, *argv):
         logging.exception("An error orrcured in play function")
         await ctx.send("could not play song")
 
-@bot.command(name='playshuffled', help="plays songs and shuffles playlists on queing")
+@bot.command(name='playshuffled', help="Plays songs and shuffles playlists on queueing")
 async def playShuffled(ctx, *argv):
     g = getGuild(ctx.guild.id)
     g.shuffle = True
@@ -251,11 +206,11 @@ async def stop(ctx):
 
 
 #queue manipulation
-@bot.command(name='add', help='functions as play command')
+@bot.command(name='add', help='Adds a song to the queue, functions same as play command')
 async def add(ctx, *argv):
     await play(ctx, *argv)
 
-@bot.command(name='addshuffled', help='functions as playshuffled command')
+@bot.command(name='addshuffled', help='Adds and shuffles songs to the queue, functions as playshuffled command')
 async def addShuffled(ctx, *argv):
     await playShuffled(ctx, *argv)
         
