@@ -26,3 +26,4 @@ discord: python3 -m install -U discord.py
 Add your discord bot token to the .env file to connect to discord
 
 use this command to help with youtube-dl 403 errors: youtube-dl --rm-cache-dir
+Reinstall youtubedl: pip install --upgrade --force-reinstall "git+https://github.com/ytdl-org/youtube-dl.git"
