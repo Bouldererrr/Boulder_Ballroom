@@ -1,0 +1,14 @@
+#A not so complete document of what changed when
+#Lists when a chage was made not published
+
+12/18/2023
+Updated some typos
+Updated some Help information
+Moved YTDLSource to its own file
+
+
+12/3/2025
+Changed from Youtube-dl to YTDLP
+Disabled log function for ytdlp
+
+Known issue: if there is one error while downloading playlist bot won't play anything
