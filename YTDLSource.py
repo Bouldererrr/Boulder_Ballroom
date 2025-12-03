@@ -1,11 +1,14 @@
 #contains the YTDLSourse class
 
-import youtube_dl
+import yt_dlp
 import discord
 
 #youtube_dl setup
-youtube_dl.utils.bug_reports_message = lambda: ''
 
+#logging yt_dlp setup
+#yt_dlp.utils.bug_reports_message = lambda: ''
+
+#format options
 ytdl_format_options = {
     'format': 'bestaudio/best',
     'fragment_retries': 1,
@@ -24,7 +27,7 @@ ytdl_format_options = {
 
 
 #Set youtube_dl format options
-ytdl = youtube_dl.YoutubeDL(ytdl_format_options)  
+ytdl = yt_dlp.YoutubeDL(ytdl_format_options)  
     
 #youtubl class to download youtube audio file from links or search and return an array of filenames
 class YTDLSource(discord.PCMVolumeTransformer):
